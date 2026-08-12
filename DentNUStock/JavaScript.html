@@ -1,0 +1,377 @@
+<!-- 
+  © 2025 Pachara Klangchit
+  This web app and its scripts are protected under copyright.
+  Unauthorized use or distribution is prohibited.
+-->
+<script>
+  // === PRODUCTS ===
+  function submitProduct(e) {
+    e.preventDefault();
+
+    const product = {
+      name: document.getElementById("Name").value,
+      stock: parseInt(document.getElementById("TotalQuantity").value),
+    };
+
+    google.script.run
+      .withSuccessHandler(() => {
+        alert("เพิ่มสินค้าสำเร็จ");
+        document.getElementById("productForm").reset();
+        loadProducts();
+      })
+      .withFailureHandler(err => {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+      })
+      .addProduct(product);
+  }
+
+  function loadProducts() {
+    google.script.run.withSuccessHandler(renderProducts).getProducts();
+  }
+
+  function renderProducts(products) {
+    const container = document.querySelector('.container');
+    let html = "";
+
+    products.forEach((product, index) => {
+      html += `
+        <div class="product-box" data-index="${index}">
+          <h3>${Name}</h3>
+          <div class="product-info">
+            สต็อกปัจจุบัน: <span class="green">${TotalQuantity}</span><br>
+          </div>
+          <button onclick="editProduct(${index})">แก้ไข</button>
+          <button onclick="deleteProduct(${index})" style="color:red;">ลบ</button>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  window.onload = function () {
+    loadProducts();
+    readData();
+  };
+
+  // === REQUESTS ===
+
+  function addRequest() {
+    const name = $('#request\\.name').val();
+    const quantity = $('#request\\.quantity').val();
+    const requester = $('#request\\.requester').val();
+    const jobPosition = $('#request\\.jobPosition').val();
+    const department = $('#request\\.department').val();
+    const approver = $('#request\\.approver').val();
+    const purpose = $('#request\\.purpose').val();
+
+    if (name && quantity && requester && department && jobPosition && approver && purpose) {
+      const request = {
+        name,
+        quantity: parseInt(quantity),
+        requester,
+        jobPosition,
+        department,
+        approver,
+        purpose
+      };
+
+      google.script.run
+        .withSuccessHandler(() => {
+          alert("บันทึกคำขอเรียบร้อยแล้ว");
+          resetData();
+          readData();
+        })
+        .withFailureHandler((err) => {
+          console.error(err);
+          alert("เกิดข้อผิดพลาดในการบันทึกคำขอ");
+        })
+        .addRequest(request);
+    } else {
+      alert("กรุณากรอกข้อมูลให้ครบ");
+    }
+  }
+
+  function readData() {
+    google.script.run.withSuccessHandler(function (res) {
+      try {
+        res = JSON.parse(res);
+      } catch {}
+
+      $('#my_table').DataTable({
+        data: res,
+        columns: [
+          {
+            title: 'ประทับเวลา',
+            render: function (data) {
+              return moment(data).format("DD/MM/YYYY HH:mm:ss");
+            }
+          },
+          { title: 'รหัสผลิตภัณฑ์' },
+          { title: 'ชื่อผลิตภัณฑ์' },
+          { title: 'จำนวนผลิตภัณฑ์' },
+          { title: 'ชื่อสกุลผู้เบิก' },
+          { title: 'ตำแหน่ง' },
+          { title: 'แผนก' },
+          { title: 'ผู้อนุมัติ' },
+          { title: 'วัตถุประสงค์' },
+          {
+            title: 'แก้ไข',
+            render: function () {
+              return `<input type="button" value="แก้ไข" onclick="editData(this)">`;
+            }
+          },
+          {
+            title: 'ลบ',
+            render: function () {
+              return `<input type="button" value="ลบ" onclick="removeData(this)">`;
+            }
+          }
+        ],
+        bDestroy: true
+      });
+    }).readDataValue();
+  }
+
+  function editData(ele) {
+    let dataId = $(ele).closest("tr").find("td:nth-child(2)").text();
+
+    google.script.run.withSuccessHandler(function (res) {
+      try {
+        res = JSON.parse(res);
+      } catch {}
+
+      let [, productId, name, quantity, requester, jobPosition, department, approver, purpose] = res;
+
+      setMode('edit', productId);
+      $('#request\\.name').val(name);
+      $('#request\\.quantity').val(quantity);
+      $('#request\\.requester').val(requester);
+      $('#request\\.jobPosition').val(jobPosition);
+      $('#request\\.department').val(department);
+      $('#request\\.approver').val(approver);
+      $('#request\\.purpose').val(purpose);
+    }).getDataValue(dataId);
+  }
+
+  function updateRequest() {
+    let productId = $("#mode").attr("data-id");
+    let name = $('#request\\.name').val();
+    let quantity = $('#request\\.quantity').val();
+    let requester = $('#request\\.requester').val();
+    let jobPosition = $('#request\\.jobPosition').val();
+    let department = $('#request\\.department').val();
+    let approver = $('#request\\.approver').val();
+    let purpose = $('#request\\.purpose').val();
+
+    google.script.run.withSuccessHandler(function () {
+      resetData();
+      readData();
+    }).updateDataValue(productId, name, quantity, requester, jobPosition, department, approver, purpose);
+  }
+
+  function removeData(ele) {
+    let dataId = $(ele).closest("tr").find("td:nth-child(2)").text();
+
+    google.script.run.withSuccessHandler(function () {
+      readData();
+    }).removeDataValue(dataId);
+  }
+
+  function resetData() {
+    $('input.form-control').val('');
+    setMode('add');
+  }
+
+  function setMode(mode, dataId = "") {
+    if (mode === "add") {
+      $("#mode").text("เพิ่ม");
+      $("#mode").attr("data-id", "");
+    } else if (mode === "edit") {
+      $("#mode").text("แก้ไข: " + dataId);
+      $("#mode").attr("data-id", dataId);
+    }
+  }
+
+   // โหลดข้อมูลเมื่อเริ่ม
+  window.onload = function () {
+    readData();
+    resetData();
+  };
+
+  // ฟังก์ชันเพิ่มคำขอเบิกสินค้า
+  function addRequest() {
+    const name = $('#request\\.name').val();
+    const quantity = $('#request\\.quantity').val();
+    const requester = $('#request\\.requester').val();
+    const jobPosition = $('#request\\.jobPosition').val();
+    const department = $('#request\\.department').val();
+    const approver = $('#request\\.approver').val();
+    const purpose = $('#request\\.purpose').val();
+
+    if (!name || !quantity || !requester || !jobPosition || !department || !approver || !purpose) {
+      alert("กรุณากรอกข้อมูลให้ครบ");
+      return;
+    }
+
+    const request = {
+      name,
+      quantity: parseInt(quantity),
+      requester,
+      jobPosition,
+      department,
+      approver,
+      purpose
+    };
+
+    google.script.run
+      .withSuccessHandler(() => {
+        alert("บันทึกคำขอเรียบร้อยแล้ว");
+        resetData();
+        readData();
+      })
+      .withFailureHandler(err => {
+        alert("เกิดข้อผิดพลาดในการบันทึกคำขอ: " + err.message);
+      })
+      .addRequest(request);
+  }
+
+  // อ่านข้อมูลจาก Google Sheets มาแสดงใน DataTable
+  function readData() {
+    google.script.run.withSuccessHandler(function (res) {
+      try {
+        if (typeof res === "string") res = JSON.parse(res);
+      } catch {}
+
+      if ($.fn.DataTable.isDataTable('#my_table')) {
+        $('#my_table').DataTable().clear().destroy();
+      }
+
+      $('#my_table').DataTable({
+        data: res,
+        columns: [
+          {
+            data: 0,
+            title: 'ประทับเวลา',
+            render: function (data) {
+              return moment(data).format("DD/MM/YYYY HH:mm:ss");
+            }
+          },
+          { data: 1, title: 'รหัสอุปกรณ์' },
+          { data: 2, title: 'ชื่ออุปกรณ์' },
+          { data: 3, title: 'จำนวนอุปกรณ์' },
+          { data: 4, title: 'ชื่อสกุลผู้เบิก' },
+          { data: 5, title: 'ตำแหน่ง' },
+          { data: 6, title: 'แผนก' },
+          { data: 7, title: 'ผู้อนุมัติ' },
+          { data: 8, title: 'วัตถุประสงค์' },
+          {
+            title: 'แก้ไข',
+            orderable: false,
+            data: null,
+            defaultContent: '<input type="button" value="แก้ไข" class="edit-btn">',
+          },
+          {
+            title: 'ลบ',
+            orderable: false,
+            data: null,
+            defaultContent: '<input type="button" value="ลบ" class="delete-btn">',
+          }
+        ]
+      });
+
+      // จับ event ปุ่มแก้ไข
+      $('#my_table tbody').off('click').on('click', '.edit-btn', function () {
+        const data = $('#my_table').DataTable().row($(this).parents('tr')).data();
+        editData(data[1]); // ส่งรหัสผลิตภัณฑ์ (col 1)
+      });
+
+      // จับ event ปุ่มลบ
+      $('#my_table tbody').on('click', '.delete-btn', function () {
+        const data = $('#my_table').DataTable().row($(this).parents('tr')).data();
+        if (confirm('ต้องการลบข้อมูลหรือไม่?')) {
+          removeData(data[1]); // ส่งรหัสผลิตภัณฑ์ (col 1)
+        }
+      });
+    }).readDataValue();
+  }
+
+  // โหลดข้อมูลคำขอแต่ละแถวเพื่อแก้ไข
+  function editData(dataId) {
+    google.script.run.withSuccessHandler(function (res) {
+      try {
+        if (typeof res === "string") res = JSON.parse(res);
+      } catch {}
+
+      // ตัวอย่างสมมุติ res เป็น array เช่น [timestamp, id, name, quantity, requester, jobPosition, department, approver, purpose]
+      // คุณอาจต้องปรับตามโครงสร้างข้อมูลจริง
+      let [timestamp, id, name, quantity, requester, jobPosition, department, approver, purpose] = res;
+
+      setMode('edit', id);
+      $('#request\\.name').val(name);
+      $('#request\\.quantity').val(quantity);
+      $('#request\\.requester').val(requester);
+      $('#request\\.jobPosition').val(jobPosition);
+      $('#request\\.department').val(department);
+      $('#request\\.approver').val(approver);
+      $('#request\\.purpose').val(purpose);
+    }).getDataValue(dataId);
+  }
+
+  // อัพเดทข้อมูลคำขอ
+  function updateRequest() {
+    let productId = $("#mode").attr("data-id");
+    if (!productId) {
+      alert('ไม่มีข้อมูลที่จะแก้ไข');
+      return;
+    }
+
+    let name = $('#request\\.name').val();
+    let quantity = $('#request\\.quantity').val();
+    let requester = $('#request\\.requester').val();
+    let jobPosition = $('#request\\.jobPosition').val();
+    let department = $('#request\\.department').val();
+    let approver = $('#request\\.approver').val();
+    let purpose = $('#request\\.purpose').val();
+
+    if (!name || !quantity || !requester || !jobPosition || !department || !approver || !purpose) {
+      alert("กรุณากรอกข้อมูลให้ครบ");
+      return;
+    }
+
+    google.script.run.withSuccessHandler(() => {
+      alert('แก้ไขข้อมูลเรียบร้อยแล้ว');
+      resetData();
+      readData();
+    }).withFailureHandler(err => {
+      alert("เกิดข้อผิดพลาดในการแก้ไข: " + err.message);
+    }).updateDataValue(productId, name, quantity, requester, jobPosition, department, approver, purpose);
+  }
+
+  // ลบข้อมูลคำขอ
+  function removeData(dataId) {
+    google.script.run.withSuccessHandler(() => {
+      alert('ลบข้อมูลเรียบร้อยแล้ว');
+      readData();
+    }).withFailureHandler(err => {
+      alert("เกิดข้อผิดพลาดในการลบข้อมูล: " + err.message);
+    }).removeDataValue(dataId);
+  }
+
+  // รีเซ็ทฟอร์มและโหมด
+  function resetData() {
+    $('input.form-control').val('');
+    setMode('add');
+  }
+
+  // เปลี่ยนโหมดแสดงสถานะ
+  function setMode(mode, dataId = '') {
+    if (mode === 'add') {
+      $('#mode').text('เพิ่ม');
+      $('#mode').attr('data-id', '');
+    } else if (mode === 'edit') {
+      $('#mode').text('แก้ไข: ' + dataId);
+      $('#mode').attr('data-id', dataId);
+    }
+  }
+</script>

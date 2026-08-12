@@ -1,0 +1,273 @@
+<!-- 
+  © 2025 Pachara Klangchit
+  This web app and its scripts are protected under copyright.
+  Unauthorized use or distribution is prohibited.
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dent NU Stock</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Noto Sans Thai', sans-serif;
+            background: linear-gradient(to bottom right, #fce4ec, #fce4ec);
+        }
+
+        header {
+    background-color: #fce4ec;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .hospital-name {
+    font-size: 20px;
+    color: #c2185b;
+    font-weight: bold;
+    margin-right: 20px;
+    min-width: 100px;
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .search-bar input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-family: 'Noto Sans Thai', sans-serif;
+  }
+
+  .search-bar select {
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+
+  .search-bar button {
+    background-color: #d628a9;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .search-bar button:hover {
+    background-color: #b71c7a;
+  }
+
+        header img {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            color: #d628a9;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            background-color: #fef7ff;
+            gap: 30px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title-bar h2 {
+            margin: 0;
+        }
+
+        .add-button {
+            background: linear-gradient(to right, #c440ff, #ff58a5);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .product-box {
+            margin-top: 30px;
+            border: 1px solid #eee;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .product-box span {
+            display: inline-block;
+            background: #f3e8ff;
+            color: #c440ff;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .product-box h3 {
+            margin: 10px 0;
+        }
+
+        .product-info {
+            margin-top: 10px;
+            line-height: 1.8em;
+        }
+
+        .product-info .green {
+            color: green;
+        }
+    </style>
+</head>
+
+
+<body>
+  <header>
+    <div class="header-container">
+      <img class="d-block mx-auto mb-3" src="https://www.dent.nu.ac.th/wp-content/uploads/2023/03/logo-dental-hospital-CT.png" alt="" width="60" height="75">
+      <div class="hospital-name">Dent NU Stock</div>
+      <div class="search-bar">
+        <input type="text" placeholder="ค้นหาผลิตภัณฑ์">
+        <button>Search</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="title-bar">
+      <div>
+        <h2>เพิ่มอุปกรณ์ใหม่</h2>
+        <p>จัดการข้อมูลอุปกรณ์และสต็อก</p>
+      </div>
+    </div>
+
+    <form id="productForm" onsubmit="submitProduct(event)">
+      <div class="product-box">
+        <h3>เพิ่มอุปกรณ์</h3>
+        <div class="product-info">
+          <label>รหัสสินค้า</label><br>
+          <input type="text" id="product.id" required><br><br>
+
+          <label>ชื่อสินค้า</label><br>
+          <input type="text" id="product.name" required><br><br>
+
+          <label>หน่วย</label><br>
+          <input type="text" id="product.unit" required><br><br>
+
+          <label>สต็อกทั้งหมด</label><br>
+          <input type="number" id="product.stock" required><br><br>
+
+          <button type="submit" class="add-button">ยืนยัน</button>
+        </div>
+      </div>
+    </form>
+
+    <div id="productList"></div>
+  </div>
+
+  <script>
+    let products = [];
+    let editingIndex = -1;
+
+    function loadProducts() {
+      google.script.run.withSuccessHandler((data) => {
+        products = data;
+        renderProducts();
+      }).getProducts();
+    }
+
+    function renderProducts() {
+      const container = document.getElementById("productList");
+      container.innerHTML = '';
+      products.forEach((p, i) => {
+        container.innerHTML += `
+          <div class="product-box">
+            <h3>${Name}</h3>
+            <div class="product-info">
+              สต็อก: <span class="green">${TotalQuantity}</span><br>
+            </div>
+            <div class="product-actions">
+              <button onclick="editProduct(${i})">แก้ไข</button>
+              <button onclick="deleteProduct(${i})" style="color:red;">ลบ</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function editProduct(i) {
+      const p = products[i];
+      document.getElementById("Name").value = p.name;
+      document.getElementById("TotalQuantity").value = p.stock;
+      editingIndex = i;
+    }
+
+    function deleteProduct(i) {
+      if (confirm("ลบสินค้านี้ใช่หรือไม่?")) {
+        google.script.run.withSuccessHandler(loadProducts).deleteProduct(i + 1);
+      }
+    }
+
+    function submitProduct(e) {
+      e.preventDefault();
+      const product = {
+        name: document.getElementById("Name").value,
+        stock: parseInt(document.getElementById("TotalQuantity").value),
+      };
+
+      if (editingIndex > -1) {
+        google.script.run.withSuccessHandler(() => {
+          editingIndex = -1;
+          document.getElementById("productForm").reset();
+          loadProducts();
+        }).updateProduct(editingIndex, product);
+      } else {
+        google.script.run.withSuccessHandler(() => {
+          document.getElementById("productForm").reset();
+          loadProducts();
+        }).addProduct(product);
+      }
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>
